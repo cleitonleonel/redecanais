@@ -58,4 +58,7 @@ if __name__ == '__main__':
     if args.search:
         print(rede.search(args.search))
     else:
-        print(rede.search())
+        if args.select:
+            rede.select_film(filmes)
+        else:
+            print(rede.search())

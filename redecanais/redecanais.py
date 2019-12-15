@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 import re
+import sys
 import time
 import shutil
 import argparse
@@ -30,8 +31,9 @@ class SimpleServerHttp:
         self.server_thread.start()
 
     def stop(self):
+        self.server.socket.close()
         self.server.shutdown()
-        self.server.server_close()
+        # self.server.server_close()
 
 
 class Browser:
@@ -232,6 +234,8 @@ class ChannelsNetwork(Browser):
         print('\n')
         selected = input('Digite o número correspondente ao filme que deseja assistir: ')
         if selected.isalpha():
+            if selected.lower() == 's' or selected.lower() == 'sair' or selected.lower() == 'restart':
+                sys.exit()
             print('\nOpção inválida, tente novamente!!!')
             time.sleep(3)
             return self.select_film(films)
@@ -264,9 +268,9 @@ class ChannelsNetwork(Browser):
         simple_server.start()
         webbrowser.open('http://localhost:9090/player.html')
         print('Starting video')
-        time.sleep(3600)
+        time.sleep(5)
         simple_server.stop()
-        return
+        return 'Exiting...'
 
 
 def check_host():
