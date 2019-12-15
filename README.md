@@ -6,9 +6,9 @@ O **redecanais** ajuda você a criar as mais belas interfaces de linha de comand
 
 .. código:: python
 
-    """Simple mode.
+    """Modo Simples.
 
-    Usage:
+    Uso:
       redecanais.py --url <name>...
       redecanais.py --all <name>... 
       redecanais.py --category <name>...
@@ -21,7 +21,7 @@ O **redecanais** ajuda você a criar as mais belas interfaces de linha de comand
       redecanais.py (-h | --help)
       redecanais.py --version
 
-    Options:
+    Opções:
     '-u', '--url', help='Use o link de um determinado filme para extrair informações...'
     '-a', '--all', help='Use True ou False para extrair ou não todo conteúdo de uma determinada página...'
     '-c', '--category', help='Use para definir uma categoria.'
@@ -32,7 +32,11 @@ O **redecanais** ajuda você a criar as mais belas interfaces de linha de comand
     '--search', help='Use para buscar filmes por título.'
     '--select', help='Use True ou False para abrir o menu de seleçao dos filmes...'
 
+    Recomendado:
+    'python redecanais --page 2 --all True --select True'
+
     """
+    
     from redecanais import ChannelsNetwork
 
 

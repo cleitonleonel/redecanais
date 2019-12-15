@@ -10,6 +10,7 @@ import socketserver
 import threading
 import requests
 from redecanais.player import html_player
+from redecanais.version import __version_info__, __author_info__, __email__info__
 from bs4 import BeautifulSoup
 
 BASE_URL = 'https://redecanais.pictures'
@@ -241,13 +242,13 @@ class ChannelsNetwork(Browser):
         title = films[selected]['title']
         img = films[selected]['img']
         description = films[selected]['description']
-        player_url = rede.get_player(filme)
+        player_url = self.get_player(filme)
         if 'cometa.top' in player_url:
-            video_url = rede.get_stream(url=f"https://cometa.top{player_url['player']}", referer=f"https://cometa.top{player_url['embed']}")
+            video_url = self.get_stream(url=f"https://cometa.top{player_url['player']}", referer=f"https://cometa.top{player_url['embed']}")
         else:
-            video_url = rede.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
+            video_url = self.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
         print(video_url)
-        rede.play(video_url, title, img, description)
+        self.play(video_url, title, img, description)
         return
 
     def play(self, url, title=None, img=None, description=None):
@@ -283,67 +284,17 @@ def _str_to_bool(s):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='redecanais')
+    parser.add_argument('-v', '--version', action='version', version="{prog}s ({version})".format(prog="%(prog)", version=__version_info__ + ' Contato: ' + __email__info__), help='Obtenha informações da versão instalada.')
     parser.add_argument('-u', '--url', nargs='*', help='Use o link de um determinado filme para extrair informações...')
     parser.add_argument('-a', '--all', nargs='?', default=False, const=False, type=_str_to_bool, help='Use True ou False para extrair ou não todo conteúdo de uma determinada página...')
     parser.add_argument('-c', '--category', default=['dublado'], nargs='*', help='Use para definir uma categoria.')
     parser.add_argument('-g', '--genre', default=['acao'], nargs='*', help='Use para definir um gênero.')
-    parser.add_argument('-p', '--page', default='1', type=int, nargs='*', help='Use para especificar uma página.')
+    parser.add_argument('-p', '--page', default=['1'], type=int, nargs='*', help='Use para especificar uma página.')
     parser.add_argument('--host', nargs='*', help='Defina o host.')
     parser.add_argument('--stream', nargs='*', help='Use com um link embed para abrir o vídeo.')
     parser.add_argument('--search', nargs='?', help='Use para buscar filmes por título.')
     parser.add_argument('--select', nargs='?', default=False, const=False, type=_str_to_bool, help='Use True ou False para abrir o menu de seleçao dos filmes...')
     parser.add_argument('arg', nargs='*')
     parsed = parser.parse_args()
-    return vars(parsed)
-
-
-if __name__ == '__main__':
-    args = main()
-
-    if not check_host():
-        if args['host']:
-            BASE_URL = args['host'][0]
-
-    rede = ChannelsNetwork()
-    # categorias = rede.categories(BASE_URL + '/browse.html')
-    # print(categorias)
-    # filmes = rede.films(BASE_URL + '/browse.html', category='lancamentos', page=1)
-    # search_film = rede.search()
-    # print(search_film)
-    # filmes = rede.films(BASE_URL, category={'category': 'dublado', 'genre': 'terror', 'page': 2})
-    # link_test = 'https://redecanais.rocks/watch.php?vid=be4cbfff1'
-    # player_url = rede.get_player(link_test)
-    # player_url = rede.get_player('https://redecanais.rocks/dragon-ball-super-broly-dublado-2019-1080p_00f2e831c.html')
-    # print(player_url)
-    # video_url = rede.get_stream(url='https://cometa.top/player3/serverfplayerfree.php?vid=VNGDRSULTMTO4K', referer='https://cometa.top/player3/serverf.php?vid=VNGDRSULTMTO4K')
-    # video_url = rede.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
-    # print(video_url)
-    # rede.download(video_url)
-    # rede.play(video_url)
-    # select_film = rede.select_film(filmes)
-
-    parameters = {}
-    if args['category']:
-        parameters['category'] = args['category'][0]
-    if args['genre']:
-        parameters['genre'] = args['genre'][0]
-    if args['page']:
-        parameters['page'] = args['page']
-    if args['stream']:
-        link_stream = args['stream']
-
-    filmes = rede.films(BASE_URL, category=parameters)
-
-    if args['url']:
-        player_url = rede.get_player(args['url'][0])
-        video_url = rede.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
-        rede.play(video_url)
-    if args['all']:
-        print(filmes)
-    if args['select']:
-        rede.select_film(filmes)
-    if args['search']:
-        print(rede.search(args['search']))
-    else:
-        print(rede.search())
+    return parsed
