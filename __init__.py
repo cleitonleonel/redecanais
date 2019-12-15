@@ -1,1 +1,1 @@
-from redecanais import *
+from redecanais import redecanais

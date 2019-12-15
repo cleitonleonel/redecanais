@@ -9,7 +9,7 @@ import http.server
 import socketserver
 import threading
 import requests
-from player import html_player
+from redecanais.player import html_player
 from bs4 import BeautifulSoup
 
 BASE_URL = 'https://redecanais.pictures'

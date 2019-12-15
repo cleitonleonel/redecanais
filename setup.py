@@ -1,8 +1,9 @@
 from distutils.core import setup
+from setuptools import find_packages
 setup(
   name='redecanais',
-  packages=[],
-  version='0.1',
+  packages=find_packages(),
+  version='0.2',
   license='MIT',
   description='Busque,selecione e assista filmes do site https://redecanais.pictures/ a partir do prompt de comando.',
   author='Cleiton Leonel Creton',
