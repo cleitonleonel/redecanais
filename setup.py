@@ -7,15 +7,15 @@ setup(
   description='Busque,selecione e assista filmes do site https://redecanais.pictures/ a partir do prompt de comando.',
   author='Cleiton Leonel Creton',
   author_email='cleiton.leonel@gmail.com',
-  url='https://github.com/user/reponame',
-  download_url='https://github.com/user/reponame/archive/v_01.tar.gz',
+  url='https://github.com/cleitonleonel/redecanais.git',
+  download_url='https://github.com/cleitonleonel/redecanais/archive/v_01.tar.gz',
   keywords=['SOME', 'MEANINGFULL', 'KEYWORDS'],
   install_requires=[
           'requests',
           'beautifulsoup4',
       ],
   classifiers=[
-    'Development Status :: 1 - Alpha',
+    'Development Status :: 3 - Alpha',
     'Intended Audience :: Developers',
     'Topic :: Software Development :: Build Tools',
     'License :: OSI Approved :: MIT License',
