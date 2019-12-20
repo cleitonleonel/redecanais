@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #
+import os
 import re
 import sys
 import time
@@ -10,6 +11,8 @@ import http.server
 import socketserver
 import threading
 import requests
+from os import environ
+from sys import platform as _sys_platform
 from redecanais.player import html_player
 from redecanais.version import __version_info__, __author_info__, __email__info__
 from bs4 import BeautifulSoup
@@ -188,10 +191,10 @@ class ChannelsNetwork(Browser):
     def get_player(self, url):
         html = self.open(url)
         iframe = BeautifulSoup(html, 'html.parser')
-        url_player = iframe.find('div', {'id': 'video-wrapper'}).iframe['src']
-        get_link = self.check_link(url_player)
+        url_src = iframe.find('div', {'id': 'video-wrapper'}).iframe['src']
+        get_link = self.resolve_link(url_src)
         if get_link is not None:
-            url_player.replace(BASE_URL, '')
+            url_player = get_link.replace(BASE_URL, '')
             url_player_dict = {'embed': url_player, 'player': url_player}
         else:
             print('Algo deu errado, nenhum player de vídeo encontrado...')
@@ -200,22 +203,40 @@ class ChannelsNetwork(Browser):
         # url_player_dict = {'embed': url_player, 'player': url_player}
         return url_player_dict
 
-    def check_link(self, url):
-        for i in range(1, 10):
-            split_link = url.split('?')
-            player_link = f'{BASE_URL}/player{i}/serverf{i}.php?{split_link[1]}'
-            test_url = requests.get(player_link)
-            if test_url.status_code == 200:
+    def resolve_link(self, url):
+        links = self.generate_link(url)
+        for player_link in links:
+            status = self.check_link(player_link)
+            if status:
                 return player_link
-            else:
-                player_link.replace('.php', 'playerfree.php')
-                test_url = requests.get(player_link)
-                if test_url.status_code == 200:
-                    return player_link
+
+    def generate_link(self, url):
+        split_link = url.split('?')
+        list_links = []
+        for i in range(1, 10):
+            player_link1 = f'{BASE_URL}/player{i}/serverf{i}.php?{split_link[1]}'
+            list_links.append(player_link1)
+            player_link2 = f'{BASE_URL}/player{i}/serverf{i}player.php?{split_link[1]}'
+            list_links.append(player_link2)
+            player_link3 = f'{BASE_URL}/player{i}/serverf{i}playerfree.php?{split_link[1]}'
+            list_links.append(player_link3)
+        return list_links
+
+    def check_link(self, url):
+        test_url = requests.get(url)
+        if test_url.status_code == 200:
+            html = self.open(url, referer=url)
+            source = BeautifulSoup(html, 'html.parser')
+            try:
+                url_stream = source.find('div', {'id': 'instructions'}).source['src']
+                return True
+            except:
+                pass
+        else:
+            return False
 
     def get_stream(self, url, referer):
         html = self.open(url, referer)
-        #print(url)
         source = BeautifulSoup(html, 'html.parser')
         url_stream = source.find('div', {'id': 'instructions'}).source['src']
         return url_stream
@@ -251,7 +272,6 @@ class ChannelsNetwork(Browser):
             video_url = self.get_stream(url=f"https://cometa.top{player_url['player']}", referer=f"https://cometa.top{player_url['embed']}")
         else:
             video_url = self.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
-        print(video_url)
         self.play(video_url, title, img, description)
         return
 
@@ -266,11 +286,29 @@ class ChannelsNetwork(Browser):
             f.write(html_player % dict_details)
         simple_server = SimpleServerHttp()
         simple_server.start()
-        webbrowser.open('http://localhost:9090/player.html')
+        platform = _get_platform()
+        url = 'http://localhost:9090/player.html'
+        webbrowser.open(url)
         print('Starting video')
-        time.sleep(5)
+        time.sleep(10)
         simple_server.stop()
         return 'Exiting...'
+
+
+def _get_platform():
+    if 'ANDROID_ARGUMENT' in environ:
+        return 'android'
+    elif environ.get('KIVY_BUILD', '') == 'ios':
+        return 'ios'
+    elif _sys_platform in ('win32', 'cygwin'):
+        return 'win'
+    elif _sys_platform == 'darwin':
+        return 'macosx'
+    elif _sys_platform.startswith('linux'):
+        return 'linux'
+    elif _sys_platform.startswith('freebsd'):
+        return 'linux'
+    return 'unknown'
 
 
 def check_host():
