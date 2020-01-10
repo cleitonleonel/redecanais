@@ -1,23 +1,21 @@
 # -*- coding: utf-8 -*-
 #
-import os
 import re
 import sys
 import time
 import shutil
-import argparse
 import webbrowser
 import http.server
 import socketserver
 import threading
 import requests
 from os import environ
+from redecanais.settings import URL_SERVER
 from sys import platform as _sys_platform
 from redecanais.player import html_player
-from redecanais.version import __version_info__, __author_info__, __email__info__
 from bs4 import BeautifulSoup
 
-BASE_URL = 'https://redecanais.pictures'
+BASE_URL = URL_SERVER
 
 
 class SimpleServerHttp:
@@ -69,17 +67,17 @@ class ChannelsNetwork(Browser):
         super().__init__()
 
     def search(self, parameter=None):
-        if isinstance(parameter , list):
+        if isinstance(parameter, list):
             parameter = ' '.join([str(elem) for elem in parameter])
         if parameter:
             film_name = parameter
         else:
             film_name = input('Digite o nome do filme que deseja assistir: ')
+
             if film_name.isalpha():
                 if film_name.lower() == 's' or film_name.lower() == 'sair' or film_name.lower() == 'restart' or film_name.lower() == 'exit':
                     sys.exit()
         url_search = f'{BASE_URL}/search.php?keywords={film_name.replace(" ", "+")}&video-id='
-        print(url_search)
         return self.films_per_genre(url_search)
 
     def films(self, url, category, page=None):
@@ -326,34 +324,3 @@ def _get_platform():
     elif _sys_platform.startswith('freebsd'):
         return 'linux'
     return 'unknown'
-
-
-def check_host():
-    test_url = requests.get(BASE_URL)
-    if test_url.status_code == 200:
-        return True
-    else:
-        return False
-
-
-def _str_to_bool(s):
-    if s.lower() not in ['true', 'false']:
-        raise ValueError('Need bool; got %r' % s)
-    return {'true': True, 'false': False}[s.lower()]
-
-
-def main():
-    parser = argparse.ArgumentParser(prog='redecanais')
-    parser.add_argument('-v', '--version', action='version', version="{prog}s ({version})".format(prog="%(prog)", version=__version_info__ + ' Contato: ' + __email__info__), help='Obtenha informações da versão instalada.')
-    parser.add_argument('-u', '--url', nargs='*', help='Use o link de uma determinada página para extrair informações...')
-    parser.add_argument('-a', '--all', nargs='?', default=False, const=False, type=_str_to_bool, help='Use True ou False para extrair ou não todo conteúdo de uma determinada página...')
-    parser.add_argument('-c', '--category', default=['dublado'], nargs='*', help='Use para definir uma categoria.')
-    parser.add_argument('-g', '--genre', default=['acao'], nargs='*', help='Use para definir um gênero.')
-    parser.add_argument('-p', '--page', default=['1'], type=int, nargs='*', help='Use para especificar uma página.')
-    parser.add_argument('--host', nargs='*', help='Defina o host.')
-    parser.add_argument('--stream', nargs='*', help='Use com um link embed para abrir o vídeo.')
-    parser.add_argument('--search', nargs='*', help='Use para buscar filmes por título.')
-    parser.add_argument('--select', nargs='?', default=False, const=False, type=_str_to_bool, help='Use True ou False para abrir o menu de seleçao dos filmes...')
-    parser.add_argument('arg', nargs='*')
-    parsed = parser.parse_args()
-    return parsed

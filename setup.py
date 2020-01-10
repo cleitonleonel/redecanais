@@ -3,7 +3,7 @@ from setuptools import find_packages
 setup(
   name='redecanais',
   packages=find_packages(),
-  version='0.7',
+  version='0.8',
   license='MIT',
   description='Busque,selecione e assista filmes do site https://www.redecanais.com a partir do prompt de comando.',
   author='Cleiton Leonel Creton',

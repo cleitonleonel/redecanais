@@ -1,0 +1,1 @@
+URL_SERVER = 'https://redecanais.bz'
