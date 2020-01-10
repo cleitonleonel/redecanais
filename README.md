@@ -1,8 +1,4 @@
-Não é impressionante como ``optparse`` e ``argparse`` geram mensagens de ajuda com base no seu código ?!
-
-*De jeito nenhum!* Você sabe o que é incrível? É quando o analisador de opções é gerado com base na bela mensagem de ajuda que você escreve! Dessa forma, você não precisa escrever esse código parser repetitivo estúpido e pode escrever apenas a mensagem de ajuda - da maneira que desejar.
-
-O **redecanais** ajuda você a criar as mais belas interfaces de linha de comando com *facilidade*:
+O **redecanais** ajuda você a assistir vários filmes via linha de comando com *facilidade*:
 
 .. código:: python
 
@@ -22,7 +18,7 @@ O **redecanais** ajuda você a criar as mais belas interfaces de linha de comand
       redecanais.py --version
 
     Opções:
-    '-u', '--url', help='Use o link de um determinado filme para extrair informações...'
+    '-u', '--url', help='Use o link de uma determinada página para extrair informações...'
     '-a', '--all', help='Use True ou False para extrair ou não todo conteúdo de uma determinada página...'
     '-c', '--category', help='Use para definir uma categoria.'
     '-g', '--genre', help='Use para definir um gênero.'
@@ -37,7 +33,7 @@ O **redecanais** ajuda você a criar as mais belas interfaces de linha de comand
 
     """
     
-    from redecanais import ChannelsNetwork
+    from redecanais.redecanais import ChannelsNetwork
 
 
     if __name__ == '__main__':

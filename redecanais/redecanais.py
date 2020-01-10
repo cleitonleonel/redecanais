@@ -69,31 +69,48 @@ class ChannelsNetwork(Browser):
         super().__init__()
 
     def search(self, parameter=None):
+        if isinstance(parameter , list):
+            parameter = ' '.join([str(elem) for elem in parameter])
         if parameter:
             film_name = parameter
         else:
             film_name = input('Digite o nome do filme que deseja assistir: ')
+            if film_name.isalpha():
+                if film_name.lower() == 's' or film_name.lower() == 'sair' or film_name.lower() == 'restart' or film_name.lower() == 'exit':
+                    sys.exit()
         url_search = f'{BASE_URL}/search.php?keywords={film_name.replace(" ", "+")}&video-id='
-        # print(url_search)
+        print(url_search)
         return self.films_per_genre(url_search)
 
     def films(self, url, category, page=None):
         if type(category) is dict:
             list_category = ['legendado', 'dublado', 'nacional']
-            if 'ficcao' in category['genre']:
-                genre = category['genre'] + '-filmes'
-            else:
-                genre = category['genre'].capitalize() + '-Filmes'
             if category['category'] in list_category:
                 info_category = self.categories(url, category['category'].capitalize() + ' ')[0]
                 pages = re.compile(r'videos-(.*?)-date').findall(info_category['url'])[0]
                 if category['category'] == 'dublado':
-                    # print(BASE_URL + info_category['url'].replace('filmes-dublado', genre).replace(pages, str(category['page'])))
+                    if 'ficcao' in category['genre']:
+                        genre = category['genre'] + '-cientifica-filmes'
+                    else:
+                        genre = category['genre'].capitalize() + '-Filmes'
                     url_category_films = BASE_URL + info_category['url'].replace('filmes-dublado', genre).replace(pages, str(category['page']))
+                    print(url_category_films)
+                    return self.films_per_genre(url_category_films)
+                if category['category'] == 'nacional':
+                    if 'ficcao' in category['genre']:
+                        genre = category['genre'] + '-cientifica-filmes'
+                    else:
+                        genre = category['genre'] + '-filmes'
+                    url_category_films = BASE_URL + info_category['url'].replace('filmes-' + category['category'], genre + '-' + category['category']).replace(pages, str(category['page']))
+                    print(url_category_films)
                     return self.films_per_genre(url_category_films)
                 else:
-                    # print(BASE_URL + info_category['url'].replace('filmes-' + category['category'], genre + '-' + category['category'].capitalize()).replace(pages, str(category['page'])))
+                    if 'ficcao' in category['genre']:
+                        genre = category['genre'].capitalize() + '-Cientifica-Filmes'
+                    else:
+                        genre = category['genre'].capitalize() + '-Filmes'
                     url_category_films = BASE_URL + info_category['url'].replace('filmes-' + category['category'], genre + '-' + category['category'].capitalize()).replace(pages, str(category['page']))
+                    print(url_category_films)
                     return self.films_per_genre(url_category_films)
             else:
                 info_category = self.categories(url, category['category'].capitalize() + ' ')[0]
@@ -102,7 +119,7 @@ class ChannelsNetwork(Browser):
                     url_category_films = BASE_URL + info_category['url'].replace(pages, '-' + str(page) + '-')
                 else:
                     url_category_films = BASE_URL + info_category['url'].replace(pages, '-' + str(category['page']) + '-')
-                # print(url_category_films)
+                print(url_category_films)
                 return self.films_per_category(url_category_films)
         else:
             info_category = self.categories(url, category.capitalize() + ' ')[0]
@@ -111,7 +128,7 @@ class ChannelsNetwork(Browser):
                 url_category_films = BASE_URL + info_category['url'].replace(pages, '-' + str(page) + '-')
             else:
                 url_category_films = BASE_URL + info_category['url'].replace(pages, str(category['page']))
-            # print(url_category_films)
+            print(url_category_films)
             return self.films_per_category(url_category_films)
 
     def films_per_category(self, url):
@@ -328,14 +345,14 @@ def _str_to_bool(s):
 def main():
     parser = argparse.ArgumentParser(prog='redecanais')
     parser.add_argument('-v', '--version', action='version', version="{prog}s ({version})".format(prog="%(prog)", version=__version_info__ + ' Contato: ' + __email__info__), help='Obtenha informações da versão instalada.')
-    parser.add_argument('-u', '--url', nargs='*', help='Use o link de um determinado filme para extrair informações...')
+    parser.add_argument('-u', '--url', nargs='*', help='Use o link de uma determinada página para extrair informações...')
     parser.add_argument('-a', '--all', nargs='?', default=False, const=False, type=_str_to_bool, help='Use True ou False para extrair ou não todo conteúdo de uma determinada página...')
     parser.add_argument('-c', '--category', default=['dublado'], nargs='*', help='Use para definir uma categoria.')
     parser.add_argument('-g', '--genre', default=['acao'], nargs='*', help='Use para definir um gênero.')
     parser.add_argument('-p', '--page', default=['1'], type=int, nargs='*', help='Use para especificar uma página.')
     parser.add_argument('--host', nargs='*', help='Defina o host.')
     parser.add_argument('--stream', nargs='*', help='Use com um link embed para abrir o vídeo.')
-    parser.add_argument('--search', nargs='?', help='Use para buscar filmes por título.')
+    parser.add_argument('--search', nargs='*', help='Use para buscar filmes por título.')
     parser.add_argument('--select', nargs='?', default=False, const=False, type=_str_to_bool, help='Use True ou False para abrir o menu de seleçao dos filmes...')
     parser.add_argument('arg', nargs='*')
     parsed = parser.parse_args()

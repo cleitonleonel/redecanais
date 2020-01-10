@@ -44,13 +44,13 @@ if __name__ == '__main__':
         parameters['page'] = args.page[0]
     if args.stream:
         link_stream = args.stream
+        rede.play(link_stream[0])
 
     filmes = rede.films(BASE_URL, category=parameters)
 
     if args.url:
-        player_url = rede.get_player(args.url[0])
-        video_url = rede.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
-        rede.play(video_url)
+        info_film = rede.films_per_genre(args.url[0])
+        print(info_film)
     if args.all:
         print(filmes)
     if args.select:

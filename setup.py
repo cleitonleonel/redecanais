@@ -3,9 +3,9 @@ from setuptools import find_packages
 setup(
   name='redecanais',
   packages=find_packages(),
-  version='0.5',
+  version='0.7',
   license='MIT',
-  description='Busque,selecione e assista filmes do site https://redecanais.pictures/ a partir do prompt de comando.',
+  description='Busque,selecione e assista filmes do site https://www.redecanais.com a partir do prompt de comando.',
   author='Cleiton Leonel Creton',
   author_email='cleiton.leonel@gmail.com',
   url='https://github.com/cleitonleonel/redecanais.git',
