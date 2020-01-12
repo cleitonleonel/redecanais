@@ -24,7 +24,8 @@ def set_new_server(host):
 
     if not os.path.exists(filename):
         os.mkdir(BASE_DIR + '/redecanais')
-        open(filename, 'w').close()
+        with open(filename, 'w') as file:
+            file.write("URL_SERVER = ''")
 
     with open(filename, 'r') as file:
         lines = file.readlines()
