@@ -73,10 +73,11 @@ if __name__ == '__main__':
 
     if args.host:
         if not check_host():
-            print('Server offline, tente definir outro server com o comando --host <new_server>')
+            set_new_server(args.host[0])
+            sys.exit()
         else:
             set_new_server(args.host[0])
-            sys.exit(0)
+            sys.exit()
 
     if args.category:
         parameters['category'] = args.category[0]

@@ -1,1 +1,1 @@
-URL_SERVER = 'https://redecanais.br'
+URL_SERVER = 'https://redecanais.bz'
