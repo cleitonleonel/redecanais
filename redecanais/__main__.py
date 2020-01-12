@@ -4,6 +4,9 @@ import argparse
 from redecanais.redecanais import *
 from redecanais.version import __version_info__, __author_info__, __email__info__
 
+BASE_DIR = os.getcwd()
+print(BASE_DIR)
+
 
 if __package__ == '':
     path = os.path.dirname(os.path.dirname(__file__))
@@ -17,13 +20,18 @@ def _str_to_bool(s):
 
 
 def set_new_server(host):
-    with open('redecanais/settings.py', 'r') as file:
+    filename = BASE_DIR + '/redecanais/settings.py'
+
+    if not os.path.exists(filename):
+        open(filename, 'w').close()
+
+    with open(filename, 'r') as file:
         lines = file.readlines()
         for line in lines:
             if 'URL_SERVER' in line:
                 line = line.replace(line.split('=')[1], ' ' + "'" + host + "'")
 
-    with open('redecanais/settings.py', 'w') as file:
+    with open(filename, 'w') as file:
         file.write(line)
 
 
