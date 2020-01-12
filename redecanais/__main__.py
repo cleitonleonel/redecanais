@@ -23,7 +23,7 @@ def set_new_server(host):
     filename = BASE_DIR + '/redecanais/settings.py'
 
     if not os.path.exists(filename):
-        os.mkdir('/redecanais')
+        os.mkdir(BASE_DIR + '/redecanais')
         open(filename, 'w').close()
 
     with open(filename, 'r') as file:
