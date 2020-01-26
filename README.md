@@ -1,7 +1,5 @@
 O **redecanais** ajuda você a assistir vários filmes via linha de comando com *facilidade*:
 
-.. código:: python
-
     """Modo Simples.
 
     Uso:

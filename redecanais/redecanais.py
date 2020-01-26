@@ -98,8 +98,11 @@ class ChannelsNetwork(Browser):
                     if 'ficcao' in category['genre']:
                         genre = category['genre'] + '-cientifica-filmes'
                     else:
-                        genre = category['genre'] + '-filmes'
-                    url_category_films = BASE_URL + info_category['url'].replace('filmes-' + category['category'], genre + '-' + category['category']).replace(pages, str(category['page']))
+                        genre = category['genre']
+                    if genre == 'comedia':
+                        url_category_films = BASE_URL + info_category['url'].replace('filmes-' + category['category'], category['category'] + '-' + genre).replace(pages, str(category['page']))
+                    else:
+                        url_category_films = BASE_URL + info_category['url'].replace('filmes-' + category['category'], genre + '-' + category['category']).replace(pages, str(category['page']))
                     print(url_category_films)
                     return self.films_per_genre(url_category_films)
                 else:

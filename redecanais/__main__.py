@@ -5,7 +5,6 @@ from redecanais.redecanais import *
 from redecanais.version import __version_info__, __author_info__, __email__info__
 
 BASE_DIR = os.getcwd()
-print(BASE_DIR)
 
 
 if __package__ == '':
