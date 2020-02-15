@@ -18,6 +18,26 @@ from bs4 import BeautifulSoup
 BASE_URL = URL_SERVER
 
 
+def _get_platform():
+    if 'ANDROID_ARGUMENT' in environ:
+        return 'android'
+    elif environ.get('KIVY_BUILD', '') == 'ios':
+        return 'ios'
+    elif _sys_platform in ('win32', 'cygwin'):
+        return 'win'
+    elif _sys_platform == 'darwin':
+        return 'macosx'
+    elif _sys_platform.startswith('linux'):
+        return 'linux'
+    elif _sys_platform.startswith('freebsd'):
+        return 'linux'
+    return 'unknown'
+
+
+platform = _get_platform()
+print(f'Sistema Operacional {platform} suportado!!!')
+
+
 class SimpleServerHttp:
     handler = http.server.SimpleHTTPRequestHandler
 
@@ -45,11 +65,12 @@ class Browser:
 
     def headers(self):
         headers = {
-            'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36',
+            # 'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36',
+            'user-agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0',
         }
         return headers
 
-    def open(self, url, referer=None):
+    def open(self, url, referer=None, is_response=False):
         if referer:
             headers = self.headers()
             headers['referer'] = referer
@@ -58,6 +79,8 @@ class Browser:
         with requests.session() as s:
             self.request = s.get(url, headers=headers)
             self.response = self.request.text
+            if is_response:
+                return self.request
         return self.response
 
 
@@ -80,48 +103,35 @@ class ChannelsNetwork(Browser):
         url_search = f'{BASE_URL}/search.php?keywords={film_name.replace(" ", "+")}&video-id='
         return self.films_per_genre(url_search)
 
+    def get_links_categories(self, url, category):
+        info_category = self.categories(url, category['category'].capitalize() + ' ')[0]
+        html = self.open(BASE_URL + info_category['url'])
+        soup = BeautifulSoup(html, 'html.parser')
+        tags = soup.find('div', {'class': 'row pm-category-header-subcats'})
+        if tags:
+            films = tags.find_all('li')
+            categories_list = []
+            for info in films:
+                result = info.a['href']
+                categories_list.append(result)
+            return categories_list
+        else:
+            return BASE_URL + info_category['url']
+
     def films(self, url, category, page=None):
         if type(category) is dict:
-            list_category = ['legendado', 'dublado', 'nacional']
-            if category['category'] in list_category:
-                info_category = self.categories(url, category['category'].capitalize() + ' ')[0]
-                pages = re.compile(r'videos-(.*?)-date').findall(info_category['url'])[0]
-                if category['category'] == 'dublado':
-                    if 'ficcao' in category['genre']:
-                        genre = category['genre'] + '-cientifica-filmes'
-                    else:
-                        genre = category['genre'].capitalize() + '-Filmes'
-                    url_category_films = BASE_URL + info_category['url'].replace('filmes-dublado', genre).replace(pages, str(category['page']))
-                    print(url_category_films)
-                    return self.films_per_genre(url_category_films)
-                if category['category'] == 'nacional':
-                    if 'ficcao' in category['genre']:
-                        genre = category['genre'] + '-cientifica-filmes'
-                    else:
-                        genre = category['genre']
-                    if genre == 'comedia':
-                        url_category_films = BASE_URL + info_category['url'].replace('filmes-' + category['category'], category['category'] + '-' + genre).replace(pages, str(category['page']))
-                    else:
-                        url_category_films = BASE_URL + info_category['url'].replace('filmes-' + category['category'], genre + '-' + category['category']).replace(pages, str(category['page']))
-                    print(url_category_films)
-                    return self.films_per_genre(url_category_films)
-                else:
-                    if 'ficcao' in category['genre']:
-                        genre = category['genre'].capitalize() + '-Cientifica-Filmes'
-                    else:
-                        genre = category['genre'].capitalize() + '-Filmes'
-                    url_category_films = BASE_URL + info_category['url'].replace('filmes-' + category['category'], genre + '-' + category['category'].capitalize()).replace(pages, str(category['page']))
-                    print(url_category_films)
-                    return self.films_per_genre(url_category_films)
-            else:
-                info_category = self.categories(url, category['category'].capitalize() + ' ')[0]
-                pages = re.compile(r'videos(.*?)date').findall(info_category['url'])[0]
-                if page is not None:
-                    url_category_films = BASE_URL + info_category['url'].replace(pages, '-' + str(page) + '-')
-                else:
-                    url_category_films = BASE_URL + info_category['url'].replace(pages, '-' + str(category['page']) + '-')
-                print(url_category_films)
+            categories_list = self.get_links_categories(url, category)
+            if type(categories_list) is not list:
+                pages = re.compile(r'videos-(.*?)-date').findall(categories_list)[0]
+                print(categories_list.replace(pages, str(category['page'])))
+                url_category_films = categories_list.replace(pages, str(category['page']))
                 return self.films_per_category(url_category_films)
+            for item in categories_list:
+                if category['genre'] in item.lower():
+                    pages = re.compile(r'videos-(.*?)-date').findall(item)[0]
+                    print(BASE_URL + item.replace(pages, str(category['page'])))
+                    url_category_films = BASE_URL + item.replace(pages, str(category['page']))
+                    return self.films_per_category(url_category_films)
         else:
             info_category = self.categories(url, category.capitalize() + ' ')[0]
             pages = re.compile(r'videos(.*?)date').findall(info_category['url'])[0]
@@ -129,25 +139,29 @@ class ChannelsNetwork(Browser):
                 url_category_films = BASE_URL + info_category['url'].replace(pages, '-' + str(page) + '-')
             else:
                 url_category_films = BASE_URL + info_category['url'].replace(pages, str(category['page']))
-            print(url_category_films)
             return self.films_per_category(url_category_films)
 
     def films_per_category(self, url):
         html = self.open(url)
         soup = BeautifulSoup(html, 'html.parser')
-        tags = soup.find('ul', {'class': 'row pm-ul-browse-videos list-unstyled'})
-        films = tags.find_all('div', {'class': 'pm-video-thumb'})
-        films_list = []
-        for info in films:
-            result = info.find_all('a')[1]
-            if 'https' not in result.img['data-echo']:
-                img = BASE_URL + result.img['data-echo']
-            else:
-                img = result.img['data-echo']
-            description = self.get_description(BASE_URL + result['href'])
-            dict_films = {'title': result.img['alt'], 'url': BASE_URL + result['href'], 'img': img, 'description': description}
-            films_list.append(dict_films)
-        return films_list
+        try:
+            tags = soup.find('ul', {'class': 'row pm-ul-browse-videos list-unstyled'})
+            films = tags.find_all('div', {'class': 'pm-video-thumb'})
+            films_list = []
+            for info in films:
+                result = info.find_all('a')[1]
+                if 'https' not in result.img['data-echo']:
+                    img = BASE_URL + result.img['data-echo']
+                else:
+                    img = result.img['data-echo']
+                description = self.get_description(BASE_URL + result['href'])
+                dict_films = {'title': result.img['alt'], 'url': BASE_URL + result['href'], 'img': img, 'description': description}
+                films_list.append(dict_films)
+            return films_list
+        except:
+            info_warning = soup.find('div', {'class': 'col-md-12 text-center'}).text
+            print(info_warning)
+            sys.exit()
 
     def films_per_genre(self, url, category=None, genre=None):
         url_genre = url
@@ -168,17 +182,13 @@ class ChannelsNetwork(Browser):
         return films_list
 
     def categories(self, url, category=None):
-        # print(url)
         html = self.open(url)
-        # print(html)
         soup = BeautifulSoup(html, 'html.parser')
         tags = soup.find_all('li', {'class': 'dropdown-submenu'})[0]
-        # print(tags)
         tags.ul.unwrap()
         new_html = str(tags).replace('dropdown-submenu', '').replace('</a>\n', '</a> </li>')
         new_soup = BeautifulSoup(new_html, 'html.parser')
         new_tags = new_soup.find_all('li')
-        # print(new_tags)
         category_list = []
         for info in new_tags:
             if category is not None:
@@ -210,21 +220,20 @@ class ChannelsNetwork(Browser):
         html = self.open(url)
         iframe = BeautifulSoup(html, 'html.parser')
         url_src = iframe.find('div', {'id': 'video-wrapper'}).iframe['src']
-        get_link = self.resolve_link(url_src)
+        embed = iframe.find('meta', {'itemprop': 'embedURL'})['content']
+        get_link = self.resolve_link(url_src, embed=BASE_URL + embed)
         if get_link is not None:
             url_player = get_link.replace(BASE_URL, '')
-            url_player_dict = {'embed': url_player, 'player': url_player}
+            url_player_dict = {'embed': embed, 'player': url_player}
         else:
             print('Algo deu errado, nenhum player de vídeo encontrado...')
             url_player_dict = {}
-        # url_player_dict = {'embed': url_player, 'player': url_player.replace('.php', 'playerfree.php')}
-        # url_player_dict = {'embed': url_player, 'player': url_player}
         return url_player_dict
 
-    def resolve_link(self, url):
+    def resolve_link(self, url, embed):
         links = self.generate_link(url)
         for player_link in links:
-            status = self.check_link(player_link)
+            status = self.check_link(player_link, embed)
             if status:
                 return player_link
 
@@ -240,16 +249,10 @@ class ChannelsNetwork(Browser):
             list_links.append(player_link3)
         return list_links
 
-    def check_link(self, url):
-        test_url = requests.get(url)
+    def check_link(self, player_link, embed):
+        test_url = self.open(player_link, referer=embed, is_response=True)
         if test_url.status_code == 200:
-            html = self.open(url, referer=url)
-            source = BeautifulSoup(html, 'html.parser')
-            try:
-                url_stream = source.find('div', {'id': 'instructions'}).source['src']
-                return True
-            except:
-                pass
+            return True
         else:
             return False
 
@@ -257,7 +260,7 @@ class ChannelsNetwork(Browser):
         html = self.open(url, referer)
         source = BeautifulSoup(html, 'html.parser')
         url_stream = source.find('div', {'id': 'instructions'}).source['src']
-        return url_stream
+        return url_stream.replace('\n', '')
 
     def download(self, url):
         filename = url.split('/')[-1].replace('?attachment=true', '')
@@ -290,40 +293,26 @@ class ChannelsNetwork(Browser):
             video_url = self.get_stream(url=f"https://cometa.top{player_url['player']}", referer=f"https://cometa.top{player_url['embed']}")
         else:
             video_url = self.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
+        print(video_url)
         self.play(video_url, title, img, description)
         return
 
     def play(self, url, title=None, img=None, description=None):
 
-        dict_details = {"url": url,
-                        "title": title,
-                        "img": img,
-                        "description": description
-                        }
+        dict_details = {
+            "title": title,
+            "img": img,
+            "description": description,
+            "url": url,
+        }
+
         with open('player.html', 'w') as f:
             f.write(html_player % dict_details)
         simple_server = SimpleServerHttp()
         simple_server.start()
-        platform = _get_platform()
         url = 'http://localhost:9090/player.html'
         webbrowser.open(url)
         print('Starting video')
         time.sleep(10)
         simple_server.stop()
         return 'Exiting...'
-
-
-def _get_platform():
-    if 'ANDROID_ARGUMENT' in environ:
-        return 'android'
-    elif environ.get('KIVY_BUILD', '') == 'ios':
-        return 'ios'
-    elif _sys_platform in ('win32', 'cygwin'):
-        return 'win'
-    elif _sys_platform == 'darwin':
-        return 'macosx'
-    elif _sys_platform.startswith('linux'):
-        return 'linux'
-    elif _sys_platform.startswith('freebsd'):
-        return 'linux'
-    return 'unknown'

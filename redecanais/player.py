@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+#
+
 html_player = """
 <!DOCTYPE html>
 <html lang="en">
@@ -67,10 +70,10 @@ body {
     let cc = new Cast();
     cc.on('available', function() {
         cc.cast({
-            content:     '%(url)s',
             poster:      '%(img)s',
             title:       '%(title)s',
-            description: '%(description)s'
+            description: '%(description)s',
+            content:     '%(url)s',            
         })
     })
 </script>
