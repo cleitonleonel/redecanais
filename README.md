@@ -1,5 +1,10 @@
 O **redecanais** ajuda você a assistir vários filmes via linha de comando com *facilidade*:
 
+# Instalação:
+```shell script
+pip install redecanais ou pip install git+https://github.com/cleitonleonel/redecanais.git
+```
+
 # Uso dentro do módulo:
 ```shell script
 python redecanais.py --url <name>...
