@@ -10,7 +10,7 @@ setup(
   long_description=long_description,
   long_description_content_type='text/markdown',
   packages=find_packages(),
-  version='0.14',
+  version='0.25',
   license='MIT',
   description='Busque,selecione e assista filmes do site https://www.redecanais.com a partir do prompt de comando.',
   author='Cleiton Leonel Creton',
@@ -31,5 +31,6 @@ setup(
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.8',
   ],
 )
