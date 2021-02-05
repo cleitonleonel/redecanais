@@ -38,6 +38,24 @@ platform = _get_platform()
 print(f'Sistema Operacional {platform} suportado!!!')
 
 
+class ProxyRequests:
+    def __init__(self):
+        self.sockets = []
+        self.acquire_sockets()
+        self.proxies = self.mount_proxies()
+
+    def acquire_sockets(self):
+        response = requests.get('https://api.proxyscrape.com/?request=displayproxies&proxytype=http&timeout=7000&country=BR&anonymity=elite&ssl=yes').text
+        self.sockets = response.split('\n')
+
+    def mount_proxies(self):
+        current_socket = self.sockets.pop(0)
+        proxies = {
+            'http': self.sockets,
+        }
+        return proxies
+
+
 class SimpleServerHttp:
     handler = http.server.SimpleHTTPRequestHandler
 
@@ -52,84 +70,98 @@ class SimpleServerHttp:
         self.server_thread.start()
 
     def stop(self):
-        self.server.socket.close()
         self.server.shutdown()
-        # self.server.server_close()
+        self.server.server_close()
 
 
-class Browser:
+class Browser(object):
 
     def __init__(self):
         self.request = None
         self.response = None
+        self.proxies = None
+        self.referer = None
+        self.session = requests.Session()
 
     def headers(self):
         headers = {
-            # 'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36',
-            'user-agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0',
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0',
         }
         return headers
 
-    def open(self, url, referer=None, is_response=False):
-        if referer:
-            headers = self.headers()
-            headers['referer'] = referer
+    def verify_proxy(self, url, proxies, data):
+        with self.session as s:
+            payload = data
+            self.response = s.post(url=url, data=payload, proxies=proxies)
+            if self.response.status_code == 200:
+                print(proxies)
+                self.proxies = proxies
+                return True
+
+    def set_proxies(self, **kwargs):
+        if kwargs:
+            self.proxies = kwargs
+            return self.proxies
         else:
-            headers = self.headers()
-        with requests.session() as s:
-            self.request = s.get(url, headers=headers)
-            self.response = self.request.text
-            if is_response:
-                return self.request
-        return self.response
+            self.proxies = ProxyRequests().proxies
+
+    def send_request(self, method, url, **kwargs):
+        if self.proxies:
+            if type(self.proxies['http']) == list:
+                for proxy in self.proxies['http']:
+                    proxies = {
+                        'http': 'http://' + proxy.replace('\r', ''),
+                    }
+                    result = self.verify_proxy(url, proxies, data=kwargs)
+                    if result:
+                        break
+
+        response = self.session.request(method, url, proxies=self.proxies, **kwargs)
+        if response.status_code == 200:
+            self.referer = url
+            return response.text
+
+        return None
 
 
 class ChannelsNetwork(Browser):
 
-    def __init__(self):
+    def __init__(self, debug=False):
+        self.debug = debug
+        self.is_tv = False
+        self.url_server = None
+        self.headers = self.headers()
         super().__init__()
 
-    def search(self, parameter=None):
-        if isinstance(parameter, list):
-            parameter = ' '.join([str(elem) for elem in parameter])
+    def search(self, parameter=None, description=True):
         if parameter:
             film_name = parameter
         else:
             film_name = input('Digite o nome do filme que deseja assistir: ')
-
-            if film_name.isalpha():
-                if film_name.lower() == 's' or film_name.lower() == 'sair' or film_name.lower() == 'restart' or film_name.lower() == 'exit':
-                    sys.exit()
-        url_search = f'{BASE_URL}/search.php?keywords={film_name.replace(" ", "+")}&video-id='
-        return self.films_per_genre(url_search)
+        data = {"queryString": film_name}
+        url_search = f'{BASE_URL}/ajax_search.php'
+        if self.debug:
+            print('Search: ', url_search)
+        return self.search_filmes(url_search, data, description=description)
 
     def get_links_categories(self, url, category):
         info_category = self.categories(url, category['category'].capitalize() + ' ')[0]
-        html = self.open(BASE_URL + info_category['url'])
+        html = self.send_request('GET', BASE_URL + info_category['url'])
         soup = BeautifulSoup(html, 'html.parser')
         tags = soup.find('div', {'class': 'row pm-category-header-subcats'})
-        if tags:
-            films = tags.find_all('li')
-            categories_list = []
-            for info in films:
-                result = info.a['href']
-                categories_list.append(result)
-            return categories_list
-        else:
-            return BASE_URL + info_category['url']
+        films = tags.find_all('li')
+        categories_list = []
+        for info in films:
+            result = info.a['href']
+            categories_list.append(result)
+        return categories_list
 
     def films(self, url, category, page=None):
         if type(category) is dict:
             categories_list = self.get_links_categories(url, category)
-            if type(categories_list) is not list:
-                pages = re.compile(r'videos-(.*?)-date').findall(categories_list)[0]
-                print(categories_list.replace(pages, str(category['page'])))
-                url_category_films = categories_list.replace(pages, str(category['page']))
-                return self.films_per_category(url_category_films)
             for item in categories_list:
                 if category['genre'] in item.lower():
                     pages = re.compile(r'videos-(.*?)-date').findall(item)[0]
-                    print(BASE_URL + item.replace(pages, str(category['page'])))
                     url_category_films = BASE_URL + item.replace(pages, str(category['page']))
                     return self.films_per_category(url_category_films)
         else:
@@ -142,10 +174,10 @@ class ChannelsNetwork(Browser):
             return self.films_per_category(url_category_films)
 
     def films_per_category(self, url):
-        html = self.open(url)
+        html = self.send_request('GET', url)
         soup = BeautifulSoup(html, 'html.parser')
+        tags = soup.find('ul', {'class': 'row pm-ul-browse-videos list-unstyled'})
         try:
-            tags = soup.find('ul', {'class': 'row pm-ul-browse-videos list-unstyled'})
             films = tags.find_all('div', {'class': 'pm-video-thumb'})
             films_list = []
             for info in films:
@@ -158,14 +190,37 @@ class ChannelsNetwork(Browser):
                 dict_films = {'title': result.img['alt'], 'url': BASE_URL + result['href'], 'img': img, 'description': description}
                 films_list.append(dict_films)
             return films_list
-        except:
+        except ValueError:
             info_warning = soup.find('div', {'class': 'col-md-12 text-center'}).text
             print(info_warning)
             sys.exit()
 
+    def search_filmes(self, url, data, description=None):
+        url_genre = url
+        html = self.send_request('POST', url_genre, data=data)
+        if self.debug:
+            print('Search Films: ', html)
+        soup = BeautifulSoup(html, 'html.parser')
+        films = soup.find_all('li')
+        films_list = []
+        for info in films:
+            if self.debug:
+                print('Search Films: ', films)
+            if ' - Episódio' not in info.a.text:
+                result = info.a
+                if description:
+                    description = self.get_description(BASE_URL + result['href'])
+                else:
+                    description = None
+                dict_films = {'title': result.text, 'url': BASE_URL + result['href'], 'img': '', 'description': description}
+                films_list.append(dict_films)
+        if self.debug:
+            print('Search Films: ', films_list)
+        return films_list
+
     def films_per_genre(self, url, category=None, genre=None):
         url_genre = url
-        html = self.open(url_genre)
+        html = self.send_request('GET', url_genre)
         soup = BeautifulSoup(html, 'html.parser')
         tags = soup.find('ul', {'class': 'row pm-ul-browse-videos list-unstyled'})
         films = tags.find_all('div', {'class': 'pm-video-thumb'})
@@ -182,7 +237,7 @@ class ChannelsNetwork(Browser):
         return films_list
 
     def categories(self, url, category=None):
-        html = self.open(url)
+        html = self.send_request('GET', url)
         soup = BeautifulSoup(html, 'html.parser')
         tags = soup.find_all('li', {'class': 'dropdown-submenu'})[0]
         tags.ul.unwrap()
@@ -201,7 +256,7 @@ class ChannelsNetwork(Browser):
         return category_list
 
     def get_description(self, url):
-        html = self.open(url)
+        html = self.send_request('GET', url)
         soup = BeautifulSoup(html, 'html.parser')
         try:
             tags = soup.find('div', {'id': 'content-main'})
@@ -213,54 +268,93 @@ class ChannelsNetwork(Browser):
                 for info in films:
                     result = info.text.replace('\n', '')
                     return result
-        except:
+        except ValueError:
             return 'Conteúdo sem descrição!!!'
 
+    def find_streams(self, url):
+        self.url_server = URL_SERVER
+        if 'tv' in url:
+            self.is_tv = True
+            self.url_server = URL_SERVER
+        self.headers['referer'] = self.url_server
+        html = self.send_request('GET', url, headers=self.headers)
+        soup = BeautifulSoup(html, 'html.parser')
+        player, stream = self.get_player_id(soup)
+        try:
+            tags = soup.find('div', {'id': 'content-main'})
+            films = tags.find_all('div', {'itemprop': 'description'})
+            if not films:
+                result = {'desc': 'Conteúdo sem descrição!!!', 'player': player, 'stream': stream}
+                return result
+            else:
+                for info in films:
+                    result = {'desc': info.text.replace('\n', ''), 'player': player, 'stream': stream}
+                    return result
+        except ValueError:
+            result = {'desc': None, 'player': None, 'stream': None}
+            return result
+
+    def get_player_id(self, iframe):
+        try:
+            url_player = iframe.find('div', {'id': 'video-wrapper'}).iframe['src']
+            player, stream = self.get_player(url_player)
+        except ValueError:
+            player = None
+            stream = None
+        return player, stream
+
     def get_player(self, url):
-        html = self.open(url)
-        iframe = BeautifulSoup(html, 'html.parser')
-        url_src = iframe.find('div', {'id': 'video-wrapper'}).iframe['src']
-        embed = iframe.find('meta', {'itemprop': 'embedURL'})['content']
-        get_link = self.resolve_link(url_src, embed=BASE_URL + embed)
-        if get_link is not None:
-            url_player = get_link.replace(BASE_URL, '')
-            url_player_dict = {'embed': embed, 'player': url_player}
-        else:
-            print('Algo deu errado, nenhum player de vídeo encontrado...')
-            url_player_dict = {}
-        return url_player_dict
+        url_player = self.url_server + url
+        self.response = self.send_request('GET', url_player, headers=self.headers)
+        if self.response:
+            form = BeautifulSoup(self.response, 'html.parser').find('form')
+            url_action = form['action']
+            value = form.input['value']
+            return url_player, self.decrypt_link(url_action, value)
 
-    def resolve_link(self, url, embed):
-        links = self.generate_link(url)
-        for player_link in links:
-            status = self.check_link(player_link, embed)
-            if status:
-                return player_link
+    def decrypt_link(self, url, value):
+        self.headers["referer"] = self.referer
+        payload = {
+            "data": value
+        }
+        self.response = self.send_request('POST', url, data=payload, headers=self.headers)
+        if self.response:
+            form = BeautifulSoup(self.response, 'html.parser').find('form')
+            url_action = form['action']
+            value = form.input['value']
+            return self.redirect_link(url_action, value)
 
-    def generate_link(self, url):
-        split_link = url.split('?')
-        list_links = []
-        for i in range(1, 10):
-            player_link1 = f'{BASE_URL}/player{i}/serverf{i}.php?{split_link[1]}'
-            list_links.append(player_link1)
-            player_link2 = f'{BASE_URL}/player{i}/serverf{i}player.php?{split_link[1]}'
-            list_links.append(player_link2)
-            player_link3 = f'{BASE_URL}/player{i}/serverf{i}playerfree.php?{split_link[1]}'
-            list_links.append(player_link3)
-        return list_links
+    def redirect_link(self, url, value):
+        self.headers["referer"] = self.referer
+        payload = {
+            "data": value
+        }
+        self.response = self.send_request('POST', url, data=payload, headers=self.headers)
+        if self.response:
+            form = BeautifulSoup(self.response, 'html.parser').find('form')
+            url_action = form['action']
+            value = form.input['value']
+            return self.get_ads_link(url_action, value)
 
-    def check_link(self, player_link, embed):
-        test_url = self.open(player_link, referer=embed, is_response=True)
-        if test_url.status_code == 200:
-            return True
-        else:
-            return False
+    def get_ads_link(self, url, value):
+        self.headers["referer"] = self.referer
+        payload = {
+            "data": value
+        }
+        self.response = self.send_request('POST', url, data=payload, headers=self.headers)
+        if self.response:
+            iframe = BeautifulSoup(self.response, 'html.parser').find('iframe')
+            url_action = iframe['src']
+            return self.get_stream(url + url_action.replace('./', '/'), url)
 
     def get_stream(self, url, referer):
-        html = self.open(url, referer)
-        source = BeautifulSoup(html, 'html.parser')
-        url_stream = source.find('div', {'id': 'instructions'}).source['src']
-        return url_stream.replace('\n', '')
+        self.headers["referer"] = referer
+        self.response = self.send_request('GET', url, headers=self.headers)
+        if self.response:
+            soup = BeautifulSoup(self.response, 'html.parser')
+            if self.is_tv:
+                return re.compile(r'source: "(.*?)",').findall(self.response)[0]
+            return soup.find('div', {'id': 'instructions'}).source['src'].replace('\n', '').split('?')[0]
 
     def download(self, url):
         filename = url.split('/')[-1].replace('?attachment=true', '')
@@ -269,50 +363,50 @@ class ChannelsNetwork(Browser):
             with open(filename, 'wb') as f:
                 shutil.copyfileobj(r.raw, f)
 
-    def select_film(self, films):
+    def select_film(self, films, play=False):
         print('\n')
         for index, film in enumerate(films):
             print(str(index) + ' == ' + film['title'])
         print('\n')
         selected = input('Digite o número correspondente ao filme que deseja assistir: ')
         if selected.isalpha():
-            if selected.lower() == 's' or selected.lower() == 'sair' or selected.lower() == 'restart':
-                sys.exit()
             print('\nOpção inválida, tente novamente!!!')
             time.sleep(3)
             return self.select_film(films)
         else:
             selected = int(selected)
-        print(films[selected]['url'])
+        try:
+            print(films[selected]['url'])
+        except ValueError:
+            print('Esse filme não existe')
+            self.select_film(films)
         filme = films[selected]['url']
         title = films[selected]['title']
         img = films[selected]['img']
         description = films[selected]['description']
-        player_url = self.get_player(filme)
-        if 'cometa.top' in player_url:
-            video_url = self.get_stream(url=f"https://cometa.top{player_url['player']}", referer=f"https://cometa.top{player_url['embed']}")
-        else:
-            video_url = self.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
-        print(video_url)
-        self.play(video_url, title, img, description)
+        video_url = None
+        try:
+            video_url = self.find_streams(filme)['stream']
+        except ValueError:
+            print('Desculpe não encontramos o link do filme escolhido,tente novamente inserindo o nome real do filme.')
+            films = self.search()
+            self.select_film(films)
+        if video_url and play:
+            self.play(video_url, title, img, description)
         return
 
     def play(self, url, title=None, img=None, description=None):
-
-        dict_details = {
-            "title": title,
-            "img": img,
-            "description": description,
-            "url": url,
-        }
-
+        dict_details = {"url": url,
+                        "title": title,
+                        "img": img,
+                        "description": description
+                        }
         with open('player.html', 'w') as f:
             f.write(html_player % dict_details)
         simple_server = SimpleServerHttp()
         simple_server.start()
-        url = 'http://localhost:9090/player.html'
-        webbrowser.open(url)
+        webbrowser.open('http://localhost:9090/player.html')
         print('Starting video')
-        time.sleep(10)
+        time.sleep(15)
         simple_server.stop()
         return 'Exiting...'

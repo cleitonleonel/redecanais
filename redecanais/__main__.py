@@ -51,14 +51,14 @@ def main():
     parser = argparse.ArgumentParser(prog='redecanais')
     parser.add_argument('-v', '--version', action='version', version="{prog}s ({version})".format(prog="%(prog)", version=__version_info__ + ' Contato: ' + __email__info__), help='Obtenha informações da versão instalada.')
     parser.add_argument('-u', '--url', nargs='*', help='Use o link de uma determinada página para extrair informações...')
-    parser.add_argument('-a', '--all', nargs='?', default=False, const=False, type=_str_to_bool, help='Use True ou False para extrair ou não todo conteúdo de uma determinada página...')
+    parser.add_argument('-a', '--all', nargs='*', help='Use True ou False para extrair ou não todo conteúdo de uma determinada página...')
     parser.add_argument('-c', '--category', default=['dublado'], nargs='*', help='Use para definir uma categoria.')
     parser.add_argument('-g', '--genre', default=['acao'], nargs='*', help='Use para definir um gênero.')
     parser.add_argument('-p', '--page', default=['1'], type=int, nargs='*', help='Use para especificar uma página.')
     parser.add_argument('--host', nargs='*', help='Defina o host.')
     parser.add_argument('--stream', nargs='*', help='Use com um link embed para abrir o vídeo.')
     parser.add_argument('--search', nargs='*', help='Use para buscar filmes por título.')
-    parser.add_argument('--select', nargs='?', default=False, const=False, type=_str_to_bool, help='Use True ou False para abrir o menu de seleçao dos filmes...')
+    parser.add_argument('--select', nargs='*', help='Use True ou False para abrir o menu de seleçao dos filmes...')
     parser.add_argument('arg', nargs='*')
     parsed = parser.parse_args()
     return parsed
@@ -89,7 +89,8 @@ if __name__ == '__main__':
     if args.stream:
         if args.stream[0].endswith('.html'):
             player_url = rede.get_player(args.stream[0])
-            video_url = rede.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
+            # video_url = rede.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
+            video_url = rede.get_stream(url={'uri': f"{BASE_URL}{player_url['embed']}"}, referer='https://dietafitness.fun/')
             rede.play(video_url)
         else:
             link_stream = args.stream
@@ -103,11 +104,14 @@ if __name__ == '__main__':
     if args.all:
         print(filmes)
     if args.select:
-        rede.select_film(filmes)
+        rede.select_film(filmes, play=True)
     if args.search:
-        print(rede.search(args.search))
+        filmes = rede.search(parameter=args.search)
+        rede.select_film(filmes, play=True)
     else:
         if args.select:
-            rede.select_film(filmes)
+            rede.select_film(filmes, play=True)
         else:
-            print(rede.search())
+            filmes = rede.search()
+            print(filmes)
+            rede.select_film(filmes, play=True)
