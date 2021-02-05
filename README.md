@@ -39,7 +39,11 @@ python -m redecanais <options>
 # Recomendado:
 
 ```shell script
-python -m redecanais --page 2 --all True --select True
+python -m redecanais --page 2 --all --select
+
+python -m redecanais --search batman --select
+
+python -m redecanais -g terror -c dublado --page 1 --select
 ```
 
 

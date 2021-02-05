@@ -43,7 +43,7 @@ def check_host():
             return True
         else:
             return False
-    except:
+    except ValueError:
         return False
 
 
@@ -88,13 +88,10 @@ if __name__ == '__main__':
         parameters['page'] = args.page[0]
     if args.stream:
         if args.stream[0].endswith('.html'):
-            player_url = rede.get_player(args.stream[0])
-            # video_url = rede.get_stream(url=f"{BASE_URL}{player_url['player']}", referer=f"{BASE_URL}{player_url['embed']}")
-            video_url = rede.get_stream(url={'uri': f"{BASE_URL}{player_url['embed']}"}, referer='https://dietafitness.fun/')
+            video_url = rede.find_streams(args.stream[0])
             rede.play(video_url)
         else:
-            link_stream = args.stream
-            rede.play(link_stream[0])
+            rede.play(args.stream[0])
 
     filmes = rede.films(BASE_URL, category=parameters)
 
@@ -109,7 +106,7 @@ if __name__ == '__main__':
         filmes = rede.search(parameter=args.search)
         rede.select_film(filmes, play=True)
     else:
-        if args.select:
+        if args.select != 'None':
             rede.select_film(filmes, play=True)
         else:
             filmes = rede.search()
