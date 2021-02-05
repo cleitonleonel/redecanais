@@ -135,7 +135,7 @@ class ChannelsNetwork(Browser):
 
     def search(self, parameter=None, description=True):
         if parameter:
-            film_name = parameter
+            film_name = ' '.join(parameter).capitalize()
         else:
             film_name = input('Digite o nome do filme que deseja assistir: ')
         data = {"queryString": film_name}
@@ -214,6 +214,11 @@ class ChannelsNetwork(Browser):
                     description = None
                 dict_films = {'title': result.text, 'url': BASE_URL + result['href'], 'img': '', 'description': description}
                 films_list.append(dict_films)
+            else:
+                result = info.a
+                dict_films = {'title': result.text, 'url': BASE_URL + result['href'], 'img': '', 'description': ''}
+                films_list.append(dict_films)
+
         if self.debug:
             print('Search Films: ', films_list)
         return films_list
@@ -407,6 +412,6 @@ class ChannelsNetwork(Browser):
         simple_server.start()
         webbrowser.open('http://localhost:9090/player.html')
         print('Starting video')
-        time.sleep(15)
+        time.sleep(5)
         simple_server.stop()
         return 'Exiting...'
