@@ -134,6 +134,7 @@ class ChannelsNetwork(Browser):
         super().__init__()
 
     def search(self, parameter=None, description=True):
+        self.url_server = URL_SERVER
         if parameter:
             film_name = ' '.join(parameter).capitalize()
         else:
@@ -203,6 +204,11 @@ class ChannelsNetwork(Browser):
         soup = BeautifulSoup(html, 'html.parser')
         films = soup.find_all('li')
         films_list = []
+
+        if len(films) == 0:
+            url = self.url_server + '/search.php?keywords=' + data['queryString'] + '&video-id='
+            return self.films_per_genre(url)
+
         for info in films:
             if self.debug:
                 print('Search Films: ', films)
@@ -273,7 +279,7 @@ class ChannelsNetwork(Browser):
                 for info in films:
                     result = info.text.replace('\n', '')
                     return result
-        except ValueError:
+        except:
             return 'Conteúdo sem descrição!!!'
 
     def find_streams(self, url):
