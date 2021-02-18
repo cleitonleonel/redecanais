@@ -57,4 +57,5 @@ if __name__ == '__main__':
     films = cn.search('batman')
     print(films)
     cn.select_film(films, play=True)
+
 ```
