@@ -135,12 +135,15 @@ class ChannelsNetwork(Browser):
 
     def search(self, parameter=None, description=True):
         self.url_server = URL_SERVER
-        if parameter:
+        if type(parameter) is list:
             film_name = ' '.join(parameter).capitalize()
+        elif parameter != '' and type(parameter) is str:
+            film_name = parameter.capitalize()
         else:
             film_name = input('Digite o nome do filme que deseja assistir: ')
         data = {"queryString": film_name}
         url_search = f'{BASE_URL}/ajax_search.php'
+
         if self.debug:
             print('Search: ', url_search)
         return self.search_filmes(url_search, data, description=description)
