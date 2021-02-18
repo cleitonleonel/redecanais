@@ -54,6 +54,7 @@ from redecanais.redecanais import ChannelsNetwork
 
 if __name__ == '__main__':
     cn = ChannelsNetwork()
-    film = cn.search('batman')
-    print(film)
+    films = cn.search('batman')
+    print(films)
+    cn.select_film(films, play=True)
 ```
