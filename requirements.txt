@@ -1,0 +1,4 @@
+requests~=2.23.0
+beautifulsoup4~=4.9.0
+setuptools~=46.2.0
+PyChromecast~=8.1.0

@@ -69,6 +69,7 @@ if __name__ == '__main__':
     args = main()
 
     rede = ChannelsNetwork()
+    rede.get_chromecasts()
 
     parameters = {}
 

@@ -10,6 +10,7 @@ import socketserver
 import threading
 import requests
 from os import environ
+from pychromecast import discovery, get_chromecasts
 from redecanais.settings import URL_SERVER
 from sys import platform as _sys_platform
 from redecanais.player import html_player
@@ -129,6 +130,9 @@ class ChannelsNetwork(Browser):
     def __init__(self, debug=False):
         self.debug = debug
         self.is_tv = False
+        self.devices = []
+        self.chromecasts = None
+        self.browser = None
         self.url_server = None
         self.headers = self.headers()
         super().__init__()
@@ -405,9 +409,30 @@ class ChannelsNetwork(Browser):
             print('Desculpe não encontramos o link do filme escolhido,tente novamente inserindo o nome real do filme.')
             films = self.search()
             self.select_film(films)
-        if video_url and play:
+        if len(self.devices) > 0 and video_url and play:
+            print('\nOs seguintes dispositivos foram encontrados: ')
+            for index, device in enumerate(self.devices):
+                print(f'[x] {index} ==> {device}')
+            action = input('\nSelecione um dispositivo de mídia inserindo'
+                           ' o número correspondente para iniciar a transmissão: ')
+            if action != '':
+                cast = self.chromecasts[int(action)]
+                cast.wait()
+                mc = cast.media_controller
+                mc.play_media(video_url, 'video/mp4')
+                print(f'\nReproduzindo em {self.devices[int(action)]}\n')
+                discovery.stop_discovery(self.browser)
+                time.sleep(2)
+            else:
+                print('Nenhum dispositivo selecionado, iniciando no player padrão...\n')
+                self.play(video_url, title, img, description)
+        elif video_url and play:
             self.play(video_url, title, img, description)
         return
+
+    def get_chromecasts(self):
+        self.chromecasts, self.browser = get_chromecasts()
+        self.devices = [cc.device.friendly_name for cc in self.chromecasts]
 
     def play(self, url, title=None, img=None, description=None):
         dict_details = {"url": url,
