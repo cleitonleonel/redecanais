@@ -16,6 +16,8 @@ python redecanais.py --host <name>...
 python redecanais.py --stream <name>...
 python redecanais.py --search <name>...
 python redecanais.py --select <name>...
+python redecanais.py --external-player <name>...
+python redecanais.py --renderer-ip <name>...
 python redecanais.py (-h | --help)
 python redecanais.py --version
 ```      
@@ -34,6 +36,8 @@ python -m redecanais <options>
 '--stream', help='Use com um link embed para abrir o vídeo.'
 '--search', help='Use para buscar filmes por título.'
 '--select', help='Use True ou False para abrir o menu de seleçao dos filmes...'
+'--external-player', help='Use para definir o uso de um player externo.'
+'--renderer-ip', help='Use para definir o IP do dispositivo chromecast.'
 ```
 
 # Recomendado:
@@ -44,6 +48,10 @@ python -m redecanais --page 2 --all --select
 python -m redecanais --search batman --select
 
 python -m redecanais -g terror -c dublado --page 1 --select
+
+python -m redecanais -g terror -c dublado --page 1 --select --external-player
+
+python -m redecanais -g terror -c dublado --page 1 --select --external-player --renderer-ip 10.0.0.2
 ```
 
 
