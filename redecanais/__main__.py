@@ -1,8 +1,7 @@
 from __future__ import absolute_import
-import os
 import argparse
 from redecanais.redecanais import *
-from redecanais.version import __version_info__, __author_info__, __email__info__
+from redecanais.version import __version_info__, __email__info__
 
 BASE_DIR = os.getcwd()
 
@@ -55,6 +54,8 @@ def main():
     parser.add_argument('-c', '--category', default=['dublado'], nargs='*', help='Use para definir uma categoria.')
     parser.add_argument('-g', '--genre', default=['acao'], nargs='*', help='Use para definir um gênero.')
     parser.add_argument('-p', '--page', default=['1'], type=int, nargs='*', help='Use para especificar uma página.')
+    parser.add_argument('-r', '--renderer-ip', nargs='*', help='Use para definir o IP do dispositivo chromecast.')
+    parser.add_argument('-e', '--external-player', nargs='*', help='Use para definir o uso de um player externo.')
     parser.add_argument('--host', nargs='*', help='Defina o host.')
     parser.add_argument('--stream', nargs='*', help='Use com um link embed para abrir o vídeo.')
     parser.add_argument('--search', nargs='*', help='Use para buscar filmes por título.')
@@ -95,7 +96,6 @@ if __name__ == '__main__':
             rede.play(args.stream[0])
 
     filmes = rede.films(BASE_URL, category=parameters)
-
     if args.url:
         info_film = rede.films_per_genre(args.url[0])
         print(info_film)
@@ -103,6 +103,10 @@ if __name__ == '__main__':
         print(filmes)
     if args.select:
         rede.select_film(filmes, play=True)
+    if args.renderer_ip:
+        rede.chromecast_ip = args.renderer_ip[0]
+    if isinstance(args.external_player, list):
+        rede.external_player = True
     if args.search:
         filmes = rede.search(parameter=args.search)
         rede.select_film(filmes, play=True)

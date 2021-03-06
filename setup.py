@@ -5,12 +5,13 @@ this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+
 setup(
   name='redecanais',
   long_description=long_description,
   long_description_content_type='text/markdown',
   packages=find_packages(),
-  version='1.0.3',
+  version='1.0.5',
   license='MIT',
   description='Busque,selecione e assista filmes do site https://www.redecanais.com a partir do prompt de comando.',
   author='Cleiton Leonel Creton',
@@ -21,6 +22,7 @@ setup(
   install_requires=[
           'requests',
           'beautifulsoup4',
+          'pychromecast'
       ],
   classifiers=[
     'Development Status :: 3 - Alpha',

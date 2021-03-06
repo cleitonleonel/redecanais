@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #
+import os
 import re
 import sys
 import time
@@ -17,6 +18,9 @@ from redecanais.player import html_player
 from bs4 import BeautifulSoup
 
 BASE_URL = URL_SERVER
+PATH_PLAYER_VLC = None
+PATH_PLAYER_FF = None
+PLAYER_COMMAND = ''
 
 
 def _get_platform():
@@ -36,6 +40,22 @@ def _get_platform():
 
 
 platform = _get_platform()
+if platform == 'linux':
+    player = os.popen('which vlc').read()
+    if player != '':
+        PATH_PLAYER_VLC = 'cvlc '
+    else:
+        print('Instale o ffmpeg ou player vlc')
+        # PATH_PLAYER_FF = 'redecanais/src/linux/bin/ffplay'
+
+elif platform == 'windows':
+    player = os.popen('vlc').read()
+    if player != '':
+        PATH_PLAYER_VLC = r'\\progra~1\\videolan\\vlc'
+    else:
+        print('Instale o ffmpeg ou player vlc')
+        # PATH_PLAYER_FF = 'redecanais/src/windows/bin/ffplay.exe'
+
 print(f'Sistema Operacional {platform} suportado!!!')
 
 
@@ -134,6 +154,10 @@ class ChannelsNetwork(Browser):
         self.chromecasts = None
         self.browser = None
         self.url_server = None
+        self.stream_ref = None
+        self.external_player = None
+        self.web_player_disable = False
+        self.chromecast_ip = None
         self.headers = self.headers()
         super().__init__()
 
@@ -366,7 +390,8 @@ class ChannelsNetwork(Browser):
             return self.get_stream(url + url_action.replace('./', '/'), url)
 
     def get_stream(self, url, referer):
-        self.headers["referer"] = referer
+        self.stream_ref = referer
+        self.headers["referer"] = self.referer
         self.response = self.send_request('GET', url, headers=self.headers)
         if self.response:
             soup = BeautifulSoup(self.response, 'html.parser')
@@ -377,9 +402,23 @@ class ChannelsNetwork(Browser):
     def download(self, url):
         filename = url.split('/')[-1].replace('?attachment=true', '')
         print('Downloading...' + filename)
-        with requests.get(url, stream=True) as r:
+        with requests.get(url, headers=self.headers, stream=True) as r:
             with open(filename, 'wb') as f:
                 shutil.copyfileobj(r.raw, f)
+
+    def check_link(self, url):
+        self.headers["referer"] = self.stream_ref
+        referred = False
+        with_referer = self.session.request('GET', url, headers=self.headers, stream=True)
+        without_referer = self.session.request('GET', url, stream=True)
+        if with_referer:
+            print('Link com referer, tentando abrir com ffmpeg.')
+            self.web_player_disable = True
+            referred = True
+            return referred, True
+        elif without_referer:
+            return referred, True
+        return referred, False
 
     def select_film(self, films, play=False):
         print('\n')
@@ -405,11 +444,29 @@ class ChannelsNetwork(Browser):
         video_url = None
         try:
             video_url = self.find_streams(filme)['stream']
+            is_referred, is_valid = self.check_link(video_url)
+            if is_referred and self.external_player:
+                print('Iniciando player, aguarde...')
+                if PATH_PLAYER_FF:
+                    os.system(f'{PATH_PLAYER_FF} -headers "Referer: {self.stream_ref}" -i {video_url} > /dev/null 2>&1 &')
+                    sys.exit(0)
+                elif PATH_PLAYER_VLC:
+                    # os.system(f'{PATH_PLAYER_VLC} --http-referrer "{self.stream_ref}" {video_url} > /dev/null 2>&1 &')
+                    chromecast_command = ''
+                    if self.chromecast_ip:
+                        chromecast_command = f'--sout "#chromecast" --sout-chromecast-ip={self.chromecast_ip} --demux-filter=demux_chromecast'
+                        os.system(f'{PATH_PLAYER_VLC} --http-referrer "{self.stream_ref}" {video_url} {chromecast_command} > /dev/null 2>&1 &')
+                        sys.exit(0)
+                    else:
+                        os.system(f'vlc --http-referrer "{self.stream_ref}" {video_url} > /dev/null 2>&1 &')
+                        sys.exit(0)
+            elif not is_referred and video_url:
+                pass
         except ValueError:
             print('Desculpe não encontramos o link do filme escolhido,tente novamente inserindo o nome real do filme.')
             films = self.search()
             self.select_film(films)
-        if len(self.devices) > 0 and video_url and play:
+        if self.web_player_disable and len(self.devices) > 0 and video_url and play:
             print('\nOs seguintes dispositivos foram encontrados: ')
             for index, device in enumerate(self.devices):
                 print(f'[x] {index} ==> {device}')

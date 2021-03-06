@@ -46,6 +46,7 @@ body {
 </style>
 <head>
     <meta charset="UTF-8">
+    <meta name="referrer" content="always">
     <title>RedeCanais Player</title>
     <script rel="stylesheet" src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" type="text/javascript"></script>
     <script rel="stylesheet" src="https://cdn.jsdelivr.net/gh/fenny/castjs@3.0.1/cast.min.js"></script>    
@@ -62,7 +63,7 @@ body {
     <div class="container">
         <div style="width:980; height:823;">
             <div>
-                <video id="my_video_1" class="video-js vjs-default-skin" controls preload="auto" width="640" height="268" data-setup='{}'>
+                <video id="my_video_1" class="video-js vjs-default-skin" controls preload="auto" width="640" height="268" data-setup="{}">
                     <source src="%(url)s" type="video/mp4">
                 </video>
                 <!--<video class="afterglow center" id="myvideo" controls width="1080" height="500" autoplay="autoplay" src="%(url)s"></video>
