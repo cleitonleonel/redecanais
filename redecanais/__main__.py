@@ -5,7 +5,6 @@ from redecanais.version import __version_info__, __email__info__
 
 BASE_DIR = os.getcwd()
 
-
 if __package__ == '':
     path = os.path.dirname(os.path.dirname(__file__))
     sys.path.insert(0, path)

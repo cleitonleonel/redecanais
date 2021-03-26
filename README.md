@@ -60,13 +60,18 @@ python -m redecanais -tv --search globo --select --external-player vlc --rendere
 
 # Importando o módulo:
 ```python
+from redecanais.settings import URL_SERVER, URL_TV_SERVER
 from redecanais.redecanais import ChannelsNetwork
 
 
 if __name__ == '__main__':
     cn = ChannelsNetwork()
+    cn.url_server = URL_SERVER
     films = cn.search('batman')
     print(films)
+    #  cn.url_server = URL_TV_SERVER
+    #  channels = cn.search('fox')
+    #  cn.select_film(channels, play=True)
     cn.select_film(films, play=True)
 
 ```
