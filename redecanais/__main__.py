@@ -37,7 +37,7 @@ def set_new_server(host):
 
 def check_host():
     try:
-        test_url = requests.get(BASE_URL)
+        test_url = requests.get(rede.url_server)
         if test_url.status_code == 200:
             return True
         else:
@@ -56,6 +56,7 @@ def main():
     parser.add_argument('-p', '--page', default=['1'], type=int, nargs='*', help='Use para especificar uma página.')
     parser.add_argument('-r', '--renderer-ip', nargs='*', help='Use para definir o IP do dispositivo chromecast.')
     parser.add_argument('-e', '--external-player', nargs='*', help='Use para definir o uso de um player externo.')
+    parser.add_argument('-t', '--tv-channels', nargs='*', help='Use para definir o uso de canais de tv.')
     parser.add_argument('--host', nargs='*', help='Defina o host.')
     parser.add_argument('--stream', nargs='*', help='Use com um link embed para abrir o vídeo.')
     parser.add_argument('--search', nargs='*', help='Use para buscar filmes por título.')
@@ -70,8 +71,9 @@ if __name__ == '__main__':
     args = main()
 
     rede = ChannelsNetwork()
+    rede.progress(10, 100, title="Starting...")
     rede.get_chromecasts()
-
+    rede.progress(33, 100, title="Loading...")
     parameters = {}
 
     if args.host:
@@ -88,6 +90,7 @@ if __name__ == '__main__':
         parameters['genre'] = args.genre[0]
     if args.page:
         parameters['page'] = args.page[0]
+
     if args.stream:
         if args.stream[0].endswith('.html'):
             video_url = rede.find_streams(args.stream[0])
@@ -95,7 +98,13 @@ if __name__ == '__main__':
         else:
             rede.play(args.stream[0])
 
-    filmes = rede.films(BASE_URL, category=parameters)
+    if isinstance(args.tv_channels, list):
+        rede.is_tv = True
+        rede.url_server = URL_TV_SERVER
+    else:
+        rede.url_server = URL_SERVER
+        filmes = rede.films(URL_SERVER, category=parameters)
+
     if args.url:
         info_film = rede.films_per_genre(args.url[0])
         print(info_film)
@@ -108,7 +117,10 @@ if __name__ == '__main__':
     if isinstance(args.external_player, list):
         rede.external_player = True
     if args.search:
+        rede.progress(33, 100, title="Loading...")
         filmes = rede.search(parameter=args.search)
+        rede.progress(99, 100, title="Concluído!")
+        time.sleep(1)
         rede.select_film(filmes, play=True)
     else:
         if args.select != 'None':

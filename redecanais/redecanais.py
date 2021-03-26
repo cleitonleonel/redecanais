@@ -12,12 +12,12 @@ import threading
 import requests
 from os import environ
 from pychromecast import discovery, get_chromecasts
-from redecanais.settings import URL_SERVER
+from redecanais.settings import URL_SERVER, URL_TV_SERVER
 from sys import platform as _sys_platform
 from redecanais.player import html_player
 from bs4 import BeautifulSoup
+from numpy import interp
 
-BASE_URL = URL_SERVER
 PATH_PLAYER_VLC = None
 PATH_PLAYER_FF = None
 PLAYER_COMMAND = ''
@@ -39,6 +39,39 @@ def _get_platform():
     return 'unknown'
 
 
+def progressbar(it, prefix="", size=60, file=sys.stdout):
+    count = len(it)
+
+    def show(j):
+        x = int(size * j / count)
+        file.write("%s[%s%s] %i/%i\r" % (prefix, "#" * x, "." * (size - x), j, count))
+        file.flush()
+
+    show(0)
+    for i, item in enumerate(it):
+        yield item
+        show(i + 1)
+    file.write("\n")
+    file.flush()
+
+
+class Progress(object):
+    def __init__(self, value, end, title='Downloading', buffer=20):
+        self.title = title
+        self.end = end - 1
+        self.buffer = buffer
+        self.value = value
+        self.progress()
+
+    def progress(self):
+        maped = int(interp(self.value, [0, self.end], [0, self.buffer]))
+
+        print(
+            f'{self.title}: [{"#" * maped}{"-" * (self.buffer - maped)}]{self.value}/'
+            f'{self.end} {((self.value / self.end) * 100):.2f}%', end='\r\n\r'
+        )
+
+
 platform = _get_platform()
 if platform == 'linux':
     player = os.popen('which vlc').read()
@@ -56,10 +89,10 @@ elif platform == 'windows':
         print('Instale o ffmpeg ou player vlc')
         # PATH_PLAYER_FF = 'redecanais/src/windows/bin/ffplay.exe'
 
-print(f'Sistema Operacional {platform} suportado!!!')
+print(f'Sistema Operacional {platform} suportado!!!\n')
 
 
-class ProxyRequests:
+class ProxyRequests(object):
     def __init__(self):
         self.sockets = []
         self.acquire_sockets()
@@ -77,7 +110,7 @@ class ProxyRequests:
         return proxies
 
 
-class SimpleServerHttp:
+class SimpleServerHttp(object):
     handler = http.server.SimpleHTTPRequestHandler
 
     def __init__(self):
@@ -104,7 +137,8 @@ class Browser(object):
         self.referer = None
         self.session = requests.Session()
 
-    def headers(self):
+    @staticmethod
+    def headers():
         headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:72.0) Gecko/20100101 Firefox/72.0',
         }
@@ -149,6 +183,7 @@ class ChannelsNetwork(Browser):
 
     def __init__(self, debug=False):
         self.debug = debug
+        self.progress = Progress
         self.is_tv = False
         self.devices = []
         self.chromecasts = None
@@ -162,7 +197,6 @@ class ChannelsNetwork(Browser):
         super().__init__()
 
     def search(self, parameter=None, description=True):
-        self.url_server = URL_SERVER
         if type(parameter) is list:
             film_name = ' '.join(parameter).capitalize()
         elif parameter != '' and type(parameter) is str:
@@ -170,15 +204,15 @@ class ChannelsNetwork(Browser):
         else:
             film_name = input('Digite o nome do filme que deseja assistir: ')
         data = {"queryString": film_name}
-        url_search = f'{BASE_URL}/ajax_search.php'
+        url_search = f'{self.url_server}/ajax_search.php'
 
         if self.debug:
             print('Search: ', url_search)
-        return self.search_filmes(url_search, data, description=description)
+        return self.search_films(url_search, data, description=description)
 
     def get_links_categories(self, url, category):
         info_category = self.categories(url, category['category'].capitalize() + ' ')[0]
-        html = self.send_request('GET', BASE_URL + info_category['url'])
+        html = self.send_request('GET', self.url_server + info_category['url'])
         soup = BeautifulSoup(html, 'html.parser')
         tags = soup.find('div', {'class': 'row pm-category-header-subcats'})
         films = tags.find_all('li')
@@ -194,15 +228,15 @@ class ChannelsNetwork(Browser):
             for item in categories_list:
                 if category['genre'] in item.lower():
                     pages = re.compile(r'videos-(.*?)-date').findall(item)[0]
-                    url_category_films = BASE_URL + item.replace(pages, str(category['page']))
+                    url_category_films = self.url_server + item.replace(pages, str(category['page']))
                     return self.films_per_category(url_category_films)
         else:
             info_category = self.categories(url, category.capitalize() + ' ')[0]
             pages = re.compile(r'videos(.*?)date').findall(info_category['url'])[0]
             if page is not None:
-                url_category_films = BASE_URL + info_category['url'].replace(pages, '-' + str(page) + '-')
+                url_category_films = self.url_server + info_category['url'].replace(pages, '-' + str(page) + '-')
             else:
-                url_category_films = BASE_URL + info_category['url'].replace(pages, str(category['page']))
+                url_category_films = self.url_server + info_category['url'].replace(pages, str(category['page']))
             return self.films_per_category(url_category_films)
 
     def films_per_category(self, url):
@@ -215,11 +249,11 @@ class ChannelsNetwork(Browser):
             for info in films:
                 result = info.find_all('a')[1]
                 if 'https' not in result.img['data-echo']:
-                    img = BASE_URL + result.img['data-echo']
+                    img = self.url_server + result.img['data-echo']
                 else:
                     img = result.img['data-echo']
-                description = self.get_description(BASE_URL + result['href'])
-                dict_films = {'title': result.img['alt'], 'url': BASE_URL + result['href'], 'img': img, 'description': description}
+                description = self.get_description(self.url_server + result['href'])
+                dict_films = {'title': result.img['alt'], 'url': self.url_server + result['href'], 'img': img, 'description': description}
                 films_list.append(dict_films)
             return films_list
         except ValueError:
@@ -227,7 +261,7 @@ class ChannelsNetwork(Browser):
             print(info_warning)
             sys.exit()
 
-    def search_filmes(self, url, data, description=None):
+    def search_films(self, url, data, description=None):
         url_genre = url
         html = self.send_request('POST', url_genre, data=data)
         if self.debug:
@@ -246,14 +280,14 @@ class ChannelsNetwork(Browser):
             if ' - Episódio' not in info.a.text:
                 result = info.a
                 if description:
-                    description = self.get_description(BASE_URL + result['href'])
+                    description = self.get_description(self.url_server + result['href'])
                 else:
                     description = None
-                dict_films = {'title': result.text, 'url': BASE_URL + result['href'], 'img': '', 'description': description}
+                dict_films = {'title': result.text, 'url': self.url_server + result['href'], 'img': '', 'description': description}
                 films_list.append(dict_films)
             else:
                 result = info.a
-                dict_films = {'title': result.text, 'url': BASE_URL + result['href'], 'img': '', 'description': ''}
+                dict_films = {'title': result.text, 'url': self.url_server + result['href'], 'img': '', 'description': ''}
                 films_list.append(dict_films)
 
         if self.debug:
@@ -270,11 +304,11 @@ class ChannelsNetwork(Browser):
         for info in films:
             result = info.find_all('a')[1]
             if 'https' not in result.img['data-echo']:
-                img = BASE_URL + result.img['data-echo']
+                img = self.url_server + result.img['data-echo']
             else:
                 img = result.img['data-echo']
-            description = self.get_description(BASE_URL + result['href'])
-            dict_films = {'title': result.img['alt'], 'url': BASE_URL + result['href'], 'img': img, 'description': description}
+            description = self.get_description(self.url_server + result['href'])
+            dict_films = {'title': result.img['alt'], 'url': self.url_server + result['href'], 'img': img, 'description': description}
             films_list.append(dict_films)
         return films_list
 
@@ -314,10 +348,11 @@ class ChannelsNetwork(Browser):
             return 'Conteúdo sem descrição!!!'
 
     def find_streams(self, url):
+        self.progress(35, 99, 'Aguade um instante...')
         self.url_server = URL_SERVER
         if 'tv' in url:
             self.is_tv = True
-            self.url_server = URL_SERVER
+            self.url_server = URL_TV_SERVER
         self.headers['referer'] = self.url_server
         html = self.send_request('GET', url, headers=self.headers)
         soup = BeautifulSoup(html, 'html.parser')
@@ -337,6 +372,7 @@ class ChannelsNetwork(Browser):
             return result
 
     def get_player_id(self, iframe):
+        self.progress(40, 99, 'Aguade um instante...')
         try:
             url_player = iframe.find('div', {'id': 'video-wrapper'}).iframe['src']
             player, stream = self.get_player(url_player)
@@ -346,6 +382,7 @@ class ChannelsNetwork(Browser):
         return player, stream
 
     def get_player(self, url):
+        self.progress(50, 99, 'Aguade um instante...')
         url_player = self.url_server + url
         self.response = self.send_request('GET', url_player, headers=self.headers)
         if self.response:
@@ -355,6 +392,7 @@ class ChannelsNetwork(Browser):
             return url_player, self.decrypt_link(url_action, value)
 
     def decrypt_link(self, url, value):
+        self.progress(55, 99, 'Aguade um instante...')
         self.headers["referer"] = self.referer
         payload = {
             "data": value
@@ -367,6 +405,7 @@ class ChannelsNetwork(Browser):
             return self.redirect_link(url_action, value)
 
     def redirect_link(self, url, value):
+        self.progress(65, 99, 'Aguade um instante...')
         self.headers["referer"] = self.referer
         payload = {
             "data": value
@@ -379,6 +418,7 @@ class ChannelsNetwork(Browser):
             return self.get_ads_link(url_action, value)
 
     def get_ads_link(self, url, value):
+        self.progress(70, 99, 'Stream encontrado...')
         self.headers["referer"] = self.referer
         payload = {
             "data": value
@@ -390,6 +430,7 @@ class ChannelsNetwork(Browser):
             return self.get_stream(url + url_action.replace('./', '/'), url)
 
     def get_stream(self, url, referer):
+        self.progress(75, 99, 'Resolvendo stream...')
         self.stream_ref = referer
         self.headers["referer"] = self.referer
         self.response = self.send_request('GET', url, headers=self.headers)
@@ -409,10 +450,15 @@ class ChannelsNetwork(Browser):
     def check_link(self, url):
         self.headers["referer"] = self.stream_ref
         referred = False
-        with_referer = self.session.request('GET', url, headers=self.headers, stream=True)
-        without_referer = self.session.request('GET', url, stream=True)
+        with_referer = None
+        without_referer = None
+        try:
+            with_referer = self.session.request('GET', url, headers=self.headers, stream=True)
+            without_referer = self.session.request('GET', url, stream=True)
+        except:
+            print('\nServidor offline ou link quebrado, tente novamente mais tarde!!!\n')
         if with_referer:
-            print('Link com referer, tentando abrir com ffmpeg.')
+            # print('Link com referer, tentando abrir com ffmpeg.')
             self.web_player_disable = True
             referred = True
             return referred, True
@@ -426,15 +472,20 @@ class ChannelsNetwork(Browser):
             print(str(index) + ' == ' + film['title'])
         print('\n')
         selected = input('Digite o número correspondente ao filme que deseja assistir: ')
+        self.progress(1, 99, 'Aguade um instante...')
         if selected.isalpha():
+            self.progress(67, 99, 'Concluindo Busca.')
+            self.progress(99, 99, 'Busca encerrada')
             print('\nOpção inválida, tente novamente!!!')
-            time.sleep(3)
             return self.select_film(films)
         else:
             selected = int(selected)
         try:
-            print(films[selected]['url'])
+            self.progress(10, 99, 'Aguade um instante...')
+            # print(f'\n{films[selected]["url"]}')
         except ValueError:
+            self.progress(67, 99, 'Concluindo Busca.')
+            self.progress(99, 99, 'Busca encerrada')
             print('Esse filme não existe')
             self.select_film(films)
         filme = films[selected]['url']
@@ -442,11 +493,14 @@ class ChannelsNetwork(Browser):
         img = films[selected]['img']
         description = films[selected]['description']
         video_url = None
+        is_valid = False
+        self.progress(30, 99, 'Aguade um instante...')
         try:
             video_url = self.find_streams(filme)['stream']
             is_referred, is_valid = self.check_link(video_url)
-            if is_referred and self.external_player:
-                print('Iniciando player, aguarde...')
+            if is_valid and is_referred and self.external_player:
+                self.progress(99, 99, 'Starting vídeo stream')
+                print('\nIniciando player, aguarde...')
                 if PATH_PLAYER_FF:
                     os.system(f'{PATH_PLAYER_FF} -headers "Referer: {self.stream_ref}" -i {video_url} > /dev/null 2>&1 &')
                     sys.exit(0)
@@ -466,7 +520,7 @@ class ChannelsNetwork(Browser):
             print('Desculpe não encontramos o link do filme escolhido,tente novamente inserindo o nome real do filme.')
             films = self.search()
             self.select_film(films)
-        if self.web_player_disable and len(self.devices) > 0 and video_url and play:
+        if is_valid and self.web_player_disable and len(self.devices) > 0 and video_url and play:
             print('\nOs seguintes dispositivos foram encontrados: ')
             for index, device in enumerate(self.devices):
                 print(f'[x] {index} ==> {device}')
@@ -477,13 +531,15 @@ class ChannelsNetwork(Browser):
                 cast.wait()
                 mc = cast.media_controller
                 mc.play_media(video_url, 'video/mp4')
+                self.progress(99, 99, 'Starting vídeo stream')
                 print(f'\nReproduzindo em {self.devices[int(action)]}\n')
                 discovery.stop_discovery(self.browser)
                 time.sleep(2)
             else:
                 print('Nenhum dispositivo selecionado, iniciando no player padrão...\n')
                 self.play(video_url, title, img, description)
-        elif video_url and play:
+        elif is_valid and video_url and play:
+            self.progress(99, 99, 'Starting vídeo stream')
             self.play(video_url, title, img, description)
         return
 
