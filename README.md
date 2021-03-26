@@ -34,6 +34,7 @@ python -m redecanais <options>
 '-p', '--page', help='Use para especificar uma página.'
 '--host', help='Defina o host.'
 '--stream', help='Use com um link embed para abrir o vídeo.'
+'--tv-channels', help='Use para definir o uso de canais de tv.'
 '--search', help='Use para buscar filmes por título.'
 '--select', help='Use True ou False para abrir o menu de seleçao dos filmes...'
 '--external-player', help='Use para definir o uso de um player externo.'
@@ -52,6 +53,8 @@ python -m redecanais -g terror -c dublado --page 1 --select
 python -m redecanais -g terror -c dublado --page 1 --select --external-player
 
 python -m redecanais -g terror -c dublado --page 1 --select --external-player --renderer-ip 10.0.0.2
+
+python -m redecanais -tv --search globo --select --external-player vlc --renderer-ip 10.0.0.2
 ```
 
 
