@@ -119,7 +119,7 @@ if __name__ == '__main__':
     if args.search:
         rede.progress(33, 100, title="Loading...")
         filmes = rede.search(parameter=args.search)
-        rede.progress(99, 100, title="Concluído!")
+        rede.progress(99, 100, title="Completed!")
         time.sleep(1)
         rede.select_film(filmes, play=True)
     else:
